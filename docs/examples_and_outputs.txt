@@ -1,0 +1,67 @@
+# PostgreSQL_PVMT: 실행 예시 모음 (한글판)
+작성일: 2025-04-30 17:55
+
+이 문서는 각 주요 스크립트 실행 시 나타나는 실제 출력 예시를 보여줍니다.
+
+---
+
+## run_db.sh (일반 실행 모드)
+
+$ bash scripts/run_db.sh
+
+🔍 시스템 점검 시작 중...
+✅ Docker 정상 실행 확인됨
+✅ /mnt/wsl/mydb 마운트 확인 완료
+✅ 포트 6543~6545 상태 정상
+...
+
+🧪 최신 컨테이너 복제 → db_v1.05
+✅ 모든 컨테이너 실행 완료!
+🆕 현재 작업 컨테이너: db_v1.05 → 포트 6543
+📁 로컬 저장 목록: db_v1.03:9999 db_v1.02:9998
+
+---
+
+## port_log.sh
+
+📦 Docker 포트 매핑 현황 (자동 생성됨)
+
+📦 최신 컨테이너 (latest db)
+db_v1.05   | 0.0.0.0:6543->5432  
+db_v1.04   | 0.0.0.0:6544->5432
+
+💾 로컬 백업 컨테이너  
+db_v1.03_bak_9999 | 0.0.0.0:9999->5432
+
+📦 기타 컨테이너  
+redis | 0.0.0.0:6379->???
+
+---
+
+## version_manage.sh
+
+📘 현재 버전: v1.04 → 신규 버전: v1.05  
+🗃️  변경사항 저장됨: logs/diff_v1.05.sql  
+🧾 전체 기록에 추가됨: logs/all_change.sql  
+✅ v1.05 버전으로 업데이트 완료 (분류 기록 포함)
+
+---
+
+## error_checklist.sh (저장공간 부족 경고)
+
+⚠️ 경고: 현재 /mnt/wsl/mydb 디스크 사용률이 97%입니다. 저장 공간이 부족합니다.  
+👉 용량 확보를 위해 백업 컨테이너 정리 또는 외부 이동을 고려하세요.
+
+---
+
+## classified_diff.sql (예시 출력)
+
+-- INDEX  
++ CREATE INDEX idx_users_email ON users(email);
+
+-- TABLE  
+- ALTER TABLE users DROP COLUMN old_column;  
++ ALTER TABLE users ADD COLUMN created_at TIMESTAMP;
+
+-- TYPE  
++ CREATE TYPE user_type AS ENUM ('admin', 'user');

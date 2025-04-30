@@ -1,0 +1,52 @@
+# 🔒 OS / 시스템 임시 파일
+.DS_Store
+Thumbs.db
+
+# 🔧 WSL 마운트 경로 내 임시 파일 (주의: 실제 db는 제외하고 메타/잠금/임시만)
+mnt/wsl/mydb/**/*.lock
+mnt/wsl/mydb/**/*.tmp
+mnt/wsl/mydb/**/.check_writeable
+
+# 🔍 Logs 및 diff 캐시
+logs/*.log
+logs/error.log
+logs/diff_v*.sql
+logs/classified_diff.sql
+
+# 🔄 임시 파일 / 캐시
+*.lock
+*.tmp
+*.swp
+*.bak
+
+# 🧪 테스트 출력물 (예: temp 스크립트, 디버깅용 등)
+tmp/
+test_outputs/
+__tests__/
+
+# 🐍 Python 캐시 파일 (일부 모듈 테스트용 py 파일 대비)
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 🗃️ 데이터베이스 덤프 / raw 백업 (선택적으로 커밋할 수 있도록 무시)
+*.sql
+*.dump
+
+# 📦 컨테이너 이미지 파일 (이건 저장소 용량 방지 목적)
+*.tar
+*.img
+
+# 💡 IDE 또는 편집기 메타
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# 📁 시스템 마운트 포인트 (자동화로 생성되므로 버전관리 제외)
+mnt/wsl/mydb/scripts/run_db.lock
+mnt/wsl/mydb/scripts/*.lock
+
+# 📂 백업 또는 버전 수동 파일
+backup_*/

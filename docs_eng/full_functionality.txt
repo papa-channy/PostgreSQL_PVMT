@@ -1,0 +1,80 @@
+# PostgreSQL_PVMT: Full Functionality Overview
+Generated: 2025-04-30 17:50
+
+This file explains the full functionality of the PostgreSQL Portable Version Management Toolkit.
+
+---
+
+## Directory Structure (as of initialization)
+
+mydb/
+├── db/                    # Volume data per container (db_v1.00, db_v1.01, ...)
+├── docker/                # Reserved for docker image backup (optional)
+├── dl_fx/                 # Future deep learning functions (if applied)
+├── logs/
+│   ├── backup_log.txt     # SSD to local copy log
+│   ├── error.log          # All error messages
+│   ├── version.json       # Version tracking with metadata
+│   ├── all_change.sql     # Full history of schema diffs
+│   ├── diff_v*.sql        # Individual schema diffs (latest 5 only)
+│   └── classified_diff.sql # Diff broken down into INDEX / TABLE / TYPE ...
+├── scripts/
+│   ├── run_db.sh          # Main launcher (with --quiet option)
+│   ├── compare_con.sh     # SSD vs local comparison (structure-based)
+│   ├── version_manage.sh  # Schema diff + version tagging
+│   ├── port_log.sh        # Port status exporter (→ Desktop)
+│   ├── error_checklist.sh # Pre-launch safety net
+│   ├── req_set.sh         # One-time environment setup
+│   └── fstab_auto.sh      # UUID-based auto mount
+
+---
+
+## Execution Flow (run_db.sh)
+
+1. error_checklist.sh
+   → Checks Docker daemon, ext4 mount, port conflicts, disk usage
+
+2. compare_con.sh
+   → Compares SSD containers vs local; asks for backup targets
+
+3. Auto port management (9999↓) and log update
+
+4. SSD latest container clone to db_vX+1
+
+5. version_manage.sh
+   → Detects schema diff (6543 vs 6544), saves diff, updates version.json
+
+6. port_log.sh
+   → Current port mappings saved to Desktop
+
+---
+
+## Error Recovery Logic
+
+- Duplicate container name: skipped or renamed
+- Port conflict: reassignment starts from 9999 down
+- Dead container on core ports (6543~6545): interactive reassignment
+- Docker or mount failure: all fail early before side effects
+- Disk usage > 95%: warns and logs, but allows execution
+
+---
+
+## Data Tracking Files
+
+- version.json — official version name registry
+- all_change.sql — full change trace
+- diff_vX.sql — single schema diff
+- classified_diff.sql — labeled diff output
+- backup_log.txt — backup activity timestamped
+
+---
+
+## Extendable Points
+
+- Optional quiet mode: `run_db.sh --quiet`
+- Aliases: `rundb`, `checkport` can be registered manually
+- HTML or GUI wrappers possible for `port_log.sh`
+
+---
+
+This file is updated manually when system logic changes.
