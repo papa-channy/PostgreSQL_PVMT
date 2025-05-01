@@ -1,6 +1,7 @@
 # 🔒 OS / 시스템 임시 파일
 .DS_Store
 Thumbs.db
+.env
 
 # 🔧 WSL 마운트 경로 내 임시 파일 (주의: 실제 db는 제외하고 메타/잠금/임시만)
 mnt/wsl/mydb/**/*.lock

@@ -3,10 +3,8 @@
 # 🔍 SSD 컨테이너와 로컬 PostgreSQL 컨테이너 구조 비교 후 복사 여부 판단
 # 사용자가 선택한 SSD 컨테이너를 커밋 → 로컬에 run
 
-# ⬇️ 공통 환경 변수 로드
 source "$(dirname "$0")/env.sh"
 
-# 🔒 중복 실행 방지
 if [ -f "$LOCK_FILE" ]; then
   echo "🔒 이미 실행 중입니다. ($LOCK_FILE 존재)" >&2
   exit 1
@@ -21,14 +19,14 @@ LOCAL_PORTS=($PORT_CUR $PORT_BAK1 $PORT_BAK2)
 # ✅ 1. SSD 컨테이너 목록
 ssd_list=()
 for port in "${SSD_PORTS[@]}"; do
-  con=$(docker ps -a --format '{{.Names}} {{.Ports}}' | grep "${port}->5432" | awk '{print $1}')
+  con=$(docker ps -a --format '{{.Names}} {{.Ports}}' | grep -E "(${port}|\\[::\\]):${port}->5432" | awk '{print $1}')
   [ -n "$con" ] && ssd_list+=("$con")
 done
 
 # ✅ 2. 로컬 컨테이너 목록
 local_list=()
 for port in "${LOCAL_PORTS[@]}"; do
-  con=$(docker ps -a --format '{{.Names}} {{.Ports}}' | grep "${port}->5432" | awk '{print $1}')
+  con=$(docker ps -a --format '{{.Names}} {{.Ports}}' | grep -E "(${port}|\\[::\\]):${port}->5432" | awk '{print $1}')
   [ -n "$con" ] && local_list+=("$con")
 done
 
@@ -40,9 +38,18 @@ index=1
 
 for ssd_con in "${ssd_list[@]}"; do
   is_duplicate=false
+
+  if ! ssd_image=$(docker inspect --format='{{.Image}}' "$ssd_con" 2>/dev/null); then
+    echo "❌ docker inspect 실패: $ssd_con" | tee -a "$ERR_LOG" >&2
+    continue
+  fi
+
   for local_con in "${local_list[@]}"; do
-    ssd_image=$(docker inspect --format='{{.Image}}' "$ssd_con")
-    local_image=$(docker inspect --format='{{.Image}}' "$local_con")
+    if ! local_image=$(docker inspect --format='{{.Image}}' "$local_con" 2>/dev/null); then
+      echo "❌ docker inspect 실패: $local_con" | tee -a "$ERR_LOG" >&2
+      continue
+    fi
+
     if [ "$ssd_image" == "$local_image" ]; then
       echo "✔️ 동일: SSD '$ssd_con' ≒ 로컬 '$local_con'"
       is_duplicate=true
@@ -90,18 +97,17 @@ for idx in "${selected_indices[@]}"; do
   con_name="${selectable_list[$((idx-1))]}"
   new_name="${con_name}_bak_${next_port}"
 
-  # 이름 중복 방지
   if docker ps -a --format '{{.Names}}' | grep -q "^$new_name$"; then
     echo "⚠️ 이름 중복: $new_name → 스킵됨" | tee -a "$ERR_LOG" >&2
     continue
   fi
 
-  docker commit "$con_name" "${con_name}_image"
-  docker run -d \
-    --restart unless-stopped \
-    --name "$new_name" \
-    -p "$next_port:5432" \
-    "${con_name}_image"
+  if ! docker commit "$con_name" "${con_name}_image"; then
+    echo "❌ docker commit 실패: $con_name" | tee -a "$ERR_LOG" >&2
+    continue
+  fi
+
+  docker run -d --restart unless-stopped --name "$new_name" -p "$next_port:5432" "${con_name}_image"
 
   now=$(date '+%Y-%m-%d %H:%M')
   echo "[$now] Copied SSD container $con_name → $USER@local port $next_port" >> "$LOGS/backup_log.txt"

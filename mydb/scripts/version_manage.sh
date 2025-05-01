@@ -12,6 +12,17 @@ fi
 touch "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT INT TERM
 
+# ✅ 명령어 사전 확인
+if ! command -v pg_dump >/dev/null 2>&1; then
+  echo "❌ pg_dump 명령어를 찾을 수 없습니다. postgresql-client 설치 필요." | tee -a "$ERR_LOG" >&2
+  exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "❌ jq 명령어를 찾을 수 없습니다. jq 설치 필요." | tee -a "$ERR_LOG" >&2
+  exit 1
+fi
+
 CON_NEW="db_v_current"
 CON_OLD="db_v_previous"
 

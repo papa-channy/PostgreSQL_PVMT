@@ -1,13 +1,24 @@
 #!/bin/bash
 # 📋 port_log.sh — 실행 중인 PostgreSQL 컨테이너 포트 현황 정리
 
-# ⬇️ 공용 환경 변수
 source "$(dirname "$0")/env.sh"
 
-# 📁 저장 경로 설정
-DESKTOP_PATH="/mnt/c/Users/$USER/Desktop"
+# 📁 기본 Desktop 경로 (native Linux)
+DESKTOP_PATH="$HOME/Desktop"
+
+# WSL 감지 → Windows Desktop 경로로 변경
+if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+  DESKTOP_PATH="/mnt/c/Users/$USER/Desktop"
+fi
+
+# 출력 경로 설정
 OUTPUT_FILE="$DESKTOP_PATH/current_ports.txt"
-[ ! -d "$DESKTOP_PATH" ] && OUTPUT_FILE="/tmp/current_ports.txt"
+
+# Desktop 경로 없으면 → /tmp fallback
+if [ ! -d "$DESKTOP_PATH" ]; then
+  OUTPUT_FILE="/tmp/current_ports.txt"
+  echo "⚠️ Desktop 경로가 없으므로 /tmp/current_ports.txt에 저장했습니다." | tee -a "$ERR_LOG" >&2
+fi
 
 # 📥 컨테이너 포트 정보 수집
 ALL=$(docker ps --format '{{.Names}} {{.Ports}}' | grep --color=never '->5432')

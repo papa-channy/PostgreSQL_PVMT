@@ -27,3 +27,7 @@ export PG_IMAGE="postgres:16"
 export PORT_CUR=6543
 export PORT_BAK1=6544
 export PORT_BAK2=6545
+
+if [ -f "$BASE/.env" ]; then
+  export $(grep -v '^#' "$BASE/.env" | xargs)
+fi
