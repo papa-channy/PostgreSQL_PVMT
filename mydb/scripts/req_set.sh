@@ -1,5 +1,5 @@
 #!/bin/bash
-# ⚙️ 최초 환경 구성 스크립트 (최초 1회 실행)
+# ⚙️ 최초 환경 구성 스크립트 (native Linux 전용)
 
 source "$(dirname "$0")/env.sh"
 
@@ -12,66 +12,58 @@ if [ -f "$LOCK_FILE" ]; then
 fi
 
 touch "$LOCK_FILE"
-trap 'echo "⚠️ 설정 중단됨. 롤백 처리 중..."; rm -f "$LOCK_FILE"' INT TERM EXIT
+trap 'echo "⚠️ 설정 중단됨. 롤백 처리 중..."; rm -f "$LOCK_FILE"; exit 1' INT TERM EXIT
 
-# 🟢 WSL 여부 감지 → BASE/TARGET 구분
-if [[ "$OSTYPE" == "linux-gnu" && -d "/mnt/wsl" ]]; then
-  echo "🟢 WSL 환경 감지됨"
-  BASE="/mnt/wsl/mydb"
-  TARGET=$(find /mnt/wsl -maxdepth 1 -type d -name "PHYSICALDRIVE*p1" | head -n 1)
-  if [ -z "$TARGET" ]; then
-    echo "⛔ SSD 디스크가 마운트되지 않았거나 ext4 포맷이 아닙니다." | tee -a "$ERR_LOG" >&2
-    rm -f "$LOCK_FILE"
-    exit 1
-  fi
-  if [ ! -L "$BASE" ]; then
-    echo "🔗 심볼릭 링크 없음. 자동 생성 시도 중..."
-    sudo ln -sf "$TARGET" "$BASE"
-    if [ $? -ne 0 ]; then
-      echo "❌ 심볼릭 링크 생성 실패. 관리자 권한 또는 경로 오류." | tee -a "$ERR_LOG" >&2
-      rm -f "$LOCK_FILE"
-      exit 1
-    fi
-    echo "✅ 링크 생성 완료: $BASE → $TARGET"
-  else
-    echo "✅ 심볼릭 링크 이미 존재: $BASE"
-  fi
-else
-  echo "🟢 native Linux 환경 감지됨 → 심볼릭 링크 단계 생략"
-  BASE="/mnt/mydb"
-fi
+# 🟢 native Linux 환경 설정
+echo "🟢 native Linux 환경 감지됨"
 
-echo "📁 필수 디렉토리 생성 중..."
+# BASE 경로 설정
+BASE="/home/$USER/mydb"
+
+echo "📁 BASE 디렉토리: $BASE"
+
+# 📁 필수 디렉토리 생성
 for dir in db docker logs scripts dl_fx; do
-  sudo mkdir -p "$BASE/$dir"
+  if [ ! -d "$BASE/$dir" ]; then
+    echo "📁 $BASE/$dir 생성"
+    sudo mkdir -p "$BASE/$dir"
+  else
+    echo "✅ 이미 존재: $BASE/$dir"
+  fi
 done
 
+# 🔧 권한 설정
 echo "🔧 권한 설정 중..."
 sudo chown -R "$USER:$USER" "$BASE"
 sudo chmod -R u+rwX "$BASE"
 
+# 🗂️ 필수 파일 생성
 echo "🗂️ 필수 파일 생성 중..."
 [ ! -f "$VERSION_JSON" ] && echo '{"v1.00": "db_v1.00", "수정사항": "create new db"}' > "$VERSION_JSON"
 [ ! -f "$ALL_SQL" ] && touch "$ALL_SQL"
 [ ! -f "$PORT_FILE" ] && echo "9999" > "$PORT_FILE"
 [ -f "$SCRIPTS/run_db.lock" ] && rm -f "$SCRIPTS/run_db.lock"
 
-echo ""
-echo "ℹ️ 다음 alias가 .bashrc에 자동 추가됩니다:"
-echo "    alias rundb='bash $SCRIPTS/run_db.sh'"
-echo "    alias quickdb='bash $SCRIPTS/run_db.sh --quiet'"
-echo "    alias checkport='bash $SCRIPTS/port_log.sh'"
-
-# ✅ alias 자동 추가
-{
+# ✅ alias 추가 (중복 방지)
+if ! grep -q "alias rundb=" ~/.bashrc; then
   echo ""
-  echo "# PostgreSQL_PVMT aliases"
-  echo "alias rundb='bash $SCRIPTS/run_db.sh'"
-  echo "alias quickdb='bash $SCRIPTS/run_db.sh --quiet'"
-  echo "alias checkport='bash $SCRIPTS/port_log.sh'"
-} >> ~/.bashrc
+  echo "ℹ️ 다음 alias가 .bashrc에 자동 추가됩니다:"
+  echo "    alias rundb='bash $SCRIPTS/run_db.sh'"
+  echo "    alias quickdb='bash $SCRIPTS/run_db.sh --quiet'"
+  echo "    alias checkport='bash $SCRIPTS/port_log.sh'"
 
-echo "✅ alias가 ~/.bashrc에 추가되었습니다. (source ~/.bashrc 실행 필요)"
+  {
+    echo ""
+    echo "# PostgreSQL_PVMT aliases"
+    echo "alias rundb='bash $SCRIPTS/run_db.sh'"
+    echo "alias quickdb='bash $SCRIPTS/run_db.sh --quiet'"
+    echo "alias checkport='bash $SCRIPTS/port_log.sh'"
+  } >> ~/.bashrc
+
+  echo "✅ alias가 ~/.bashrc에 추가되었습니다. (source ~/.bashrc 실행 필요)"
+else
+  echo "✅ alias가 이미 ~/.bashrc에 등록되어 있습니다."
+fi
 
 rm -f "$LOCK_FILE"
 echo ""

@@ -13,8 +13,9 @@ touch "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT INT TERM
 
 # ✅ 명령어 사전 확인
-if ! command -v pg_dump >/dev/null 2>&1; then
-  echo "❌ pg_dump 명령어를 찾을 수 없습니다. postgresql-client 설치 필요." | tee -a "$ERR_LOG" >&2
+PG_DUMP="/usr/lib/postgresql/16/bin/pg_dump"
+if ! command -v $PG_DUMP >/dev/null 2>&1; then
+  echo "❌ pg_dump 명령어를 찾을 수 없습니다. postgresql-client-16 설치 필요." | tee -a "$ERR_LOG" >&2
   exit 1
 fi
 
@@ -23,14 +24,11 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-CON_NEW="db_v_current"
-CON_OLD="db_v_previous"
-
 mkdir -p "$LOGS"
 [ ! -f "$VERSION_JSON" ] && echo '{ "v1.00": "db_v1.00", "수정사항": "create new db" }' > "$VERSION_JSON"
 [ ! -f "$ALL_SQL" ] && touch "$ALL_SQL"
 
-latest_ver=$(jq -r 'keys[]' "$VERSION_JSON" | sort -V | tail -n1)
+latest_ver=$(jq -r 'keys[] | select(startswith("v"))' "$VERSION_JSON" | sort -V | tail -n1)
 major=${latest_ver:1:1}
 minor=${latest_ver:3:2}
 new_minor=$(printf "%02d" $((10#$minor + 1)))
@@ -42,11 +40,11 @@ CLASSIFIED_SQL="$LOGS/classified_diff.sql"
 echo "📘 Current version: $latest_ver → New: $new_ver"
 read -p "📝 이번 변경 설명 (예: 인덱스 추가, 타입 수정): " NOTE
 
-# 🔐 pg_dump 실행
+# 🔐 pg_dump 실행 (16.x 강제 경로 지정)
 PGOPTIONS='--client-min-messages=warning'
-pg_dump -U $DB_USER -h localhost -p $PORT_CUR $DB_NAME --schema-only \
+$PG_DUMP -U $DB_USER -h localhost -p $PORT_CUR $DB_NAME --schema-only \
   | grep -v '^--' | grep -v '^SET' > /tmp/new.sql 2>> "$ERR_LOG"
-pg_dump -U $DB_USER -h localhost -p $PORT_BAK1 $DB_NAME --schema-only \
+$PG_DUMP -U $DB_USER -h localhost -p $PORT_BAK1 $DB_NAME --schema-only \
   | grep -v '^--' | grep -v '^SET' > /tmp/old.sql 2>> "$ERR_LOG"
 
 if [ ! -s /tmp/new.sql ] || [ ! -s /tmp/old.sql ]; then

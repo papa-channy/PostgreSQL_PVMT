@@ -35,7 +35,7 @@ OTHER_CONTAINERS=""
 
 while read -r line; do
   NAME=$(echo "$line" | awk '{print $1}')
-  PORT=$(echo "$line" | grep -oP '[0-9]+(?=->5432)' || true)
+  PORT=$(echo "$line" | sed -E 's/.* ([0-9]+)->5432.*/\1/' || true)
 
   if [ -z "$PORT" ]; then
     continue
